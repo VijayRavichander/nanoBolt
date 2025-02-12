@@ -4,15 +4,15 @@ import { StepsList } from "../components/StepsList";
 import { FileExplorer } from "../components/FileExplorer";
 import { TabView } from "../components/TabView";
 import { CodeEditor } from "../components/CodeEditor";
-// import { PreviewFrame } from '../components/PreviewFrame';
+import { PreviewFrame } from '../components/PreviewFrame';
 import { Step, FileItem, StepType } from "../types";
 import axios from "axios";
 import { BACKEND_URL } from "../config";
 
 import { parseXml } from '../utils/parseXML';
 
-// import { useWebContainer } from '../hooks/useWebContainer';
-// import { FileNode } from '@webcontainer/api';
+import { useWebContainer } from '../hooks/useWebContainer';
+import { FileNode } from '@webcontainer/api';
 
 import { Loader } from '../components/Loader';
 
@@ -35,7 +35,7 @@ export function BuilderPage() {
   >([]);
   const [loading, setLoading] = useState(false);
   const [templateSet, setTemplateSet] = useState(false);
-  //   const webcontainer = useWebContainer();
+  const webcontainer = useWebContainer();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [activeTab, setActiveTab] = useState<"code" | "preview">("code");
@@ -45,126 +45,129 @@ export function BuilderPage() {
 
   const [files, setFiles] = useState<FileItem[]>([]);
 
-//   useEffect(() => {
-//     let originalFiles = [...files];
-//     let updateHappened = false;
-//     steps
-//       .filter(({ status }) => status === "pending")
-//       .map((step) => {
-//         updateHappened = true;
-//         if (step?.type === StepType.CreateFile) {
-//           let parsedPath = step.path?.split("/") ?? []; // ["src", "components", "App.tsx"]
-//           let currentFileStructure = [...originalFiles]; // {}
-//           let finalAnswerRef = currentFileStructure;
+  useEffect(() => {
+    let originalFiles = [...files];
+    let updateHappened = false;
 
-//           let currentFolder = "";
-//           while (parsedPath.length) {
-//             currentFolder = `${currentFolder}/${parsedPath[0]}`;
-//             let currentFolderName = parsedPath[0];
-//             parsedPath = parsedPath.slice(1);
+    steps
+      .filter(({ status }) => status === "pending") // Pick out the pending steps
+      .map((step) => {
+        updateHappened = true; // Mark the update variable
+        if (step?.type === StepType.CreateFile) {
 
-//             if (!parsedPath.length) {
-//               // final file
-//               let file = currentFileStructure.find(
-//                 (x) => x.path === currentFolder
-//               );
-//               if (!file) {
-//                 currentFileStructure.push({
-//                   name: currentFolderName,
-//                   type: "file",
-//                   path: currentFolder,
-//                   content: step.code,
-//                 });
-//               } else {
-//                 file.content = step.code;
-//               }
-//             } else {
-//               /// in a folder
-//               let folder = currentFileStructure.find(
-//                 (x) => x.path === currentFolder
-//               );
-//               if (!folder) {
-//                 // create the folder
-//                 currentFileStructure.push({
-//                   name: currentFolderName,
-//                   type: "folder",
-//                   path: currentFolder,
-//                   children: [],
-//                 });
-//               }
+          let parsedPath = step.path?.split("/") ?? []; // ["src", "App.tsx"]
+          let currentFileStructure = [...originalFiles]; // {}
+          let finalAnswerRef = currentFileStructure;
 
-//               currentFileStructure = currentFileStructure.find(
-//                 (x) => x.path === currentFolder
-//               )!.children!;
-//             }
-//           }
-//           originalFiles = finalAnswerRef;
-//         }
-//       });
+          let currentFolder = "";
 
-//     if (updateHappened) {
-//       setFiles(originalFiles);
-//       setSteps((steps) =>
-//         steps.map((s: Step) => {
-//           return {
-//             ...s,
-//             status: "completed",
-//           };
-//         })
-//       );
-//     }
-//     console.log(files);
-//   }, [steps, files]);
+          while (parsedPath.length) {
+            currentFolder = `${currentFolder}/${parsedPath[0]}`;
+            let currentFolderName = parsedPath[0];
+            parsedPath = parsedPath.slice(1);
 
-//   useEffect(() => {
-//     const createMountStructure = (files: FileItem[]): Record<string, any> => {
-//       const mountStructure: Record<string, any> = {};
+            if (!parsedPath.length) {
+              // final file
+              let file = currentFileStructure.find(
+                (x) => x.path === currentFolder
+              );
+              if (!file) {
+                currentFileStructure.push({
+                  name: currentFolderName,
+                  type: "file",
+                  path: currentFolder,
+                  content: step.code,
+                });
+              } else {
+                file.content = step.code;
+              }
+            } else {
+              /// in a folder
+              let folder = currentFileStructure.find(
+                (x) => x.path === currentFolder
+              );
+              if (!folder) {
+                // create the folder
+                currentFileStructure.push({
+                  name: currentFolderName,
+                  type: "folder",
+                  path: currentFolder,
+                  children: [],
+                });
+              }
 
-//       const processFile = (file: FileItem, isRootFolder: boolean) => {
-//         if (file.type === "folder") {
-//           // For folders, create a directory entry
-//           mountStructure[file.name] = {
-//             directory: file.children
-//               ? Object.fromEntries(
-//                   file.children.map((child) => [
-//                     child.name,
-//                     processFile(child, false),
-//                   ])
-//                 )
-//               : {},
-//           };
-//         } else if (file.type === "file") {
-//           if (isRootFolder) {
-//             mountStructure[file.name] = {
-//               file: {
-//                 contents: file.content || "",
-//               },
-//             };
-//           } else {
-//             // For files, create a file entry with contents
-//             return {
-//               file: {
-//                 contents: file.content || "",
-//               },
-//             };
-//           }
-//         }
+              currentFileStructure = currentFileStructure.find(
+                (x) => x.path === currentFolder
+              )!.children!;
+            }
+          }
+          originalFiles = finalAnswerRef;
+        }
+      });
+      
+    if (updateHappened) {
+      setFiles(originalFiles);
+      setSteps((steps) =>
+        steps.map((s: Step) => {
+          return {
+            ...s,
+            status: "completed",
+          };
+        })
+      );
+    }
+    console.log(files);
+  }, [steps, files]);
 
-//         return mountStructure[file.name];
-//       };
+  useEffect(() => {
+    const createMountStructure = (files: FileItem[]): Record<string, any> => {
+      const mountStructure: Record<string, any> = {};
 
-//       // Process each top-level file/folder
-//       files.forEach((file) => processFile(file, true));
+      const processFile = (file: FileItem, isRootFolder: boolean) => {
+        if (file.type === "folder") {
+          // For folders, create a directory entry
+          mountStructure[file.name] = {
+            directory: file.children
+              ? Object.fromEntries(
+                  file.children.map((child) => [
+                    child.name,
+                    processFile(child, false),
+                  ])
+                )
+              : {},
+          };
+        } else if (file.type === "file") {
+          if (isRootFolder) {
+            mountStructure[file.name] = {
+              file: {
+                contents: file.content || "",
+              },
+            };
+          } else {
+            // For files, create a file entry with contents
+            return {
+              file: {
+                contents: file.content || "",
+              },
+            };
+          }
+        }
 
-//       return mountStructure;
-//     };
+        return mountStructure[file.name];
+      };
 
-//     const mountStructure = createMountStructure(files);
+      // Process each top-level file/folder
+      files.forEach((file) => processFile(file, true));
 
-//     // Mount the structure if WebContainer is available
-//     console.log(mountStructure);
-//     webcontainer?.mount(mountStructure);
-//   }, [files, webcontainer]);
+      return mountStructure;
+    };
+
+    const mountStructure = createMountStructure(files);
+
+    // Mount the structure if WebContainer is available
+    webcontainer?.mount(mountStructure);
+    
+  }, [files, webcontainer]);
 
   async function init() {
 
@@ -172,33 +175,34 @@ export function BuilderPage() {
       prompt: prompt.trim(),
     });
 
-    console.log(response)
-
     setTemplateSet(true);
     const { prompts, prompt_ui } = response.data;
 
     setSteps(
-      parseXml(prompt_ui)
+      parseXml(prompt_ui[0])
     );
+
     setLoading(false);
-    
 
-    // setLoading(true);
-    // const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
-    //   messages: [...prompts, prompt].map((content) => ({
-    //     role: "user",
-    //     content,
-    //   })),
-    // });
+    setLoading(true);
+    const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
+      messages: [...prompts, prompt].map((content) => ({
+        role: "user",
+        parts: {
+            text: content
+        },
+      })),
+    });
 
+    console.log(stepsResponse.data.content);
 
-    // setSteps((s) => [
-    //   ...s,
-    //   ...parseXml(stepsResponse.data.response).map((x) => ({
-    //     ...x,
-    //     status: "pending" as "pending",
-    //   })),
-    // ]);
+    setSteps((s) => [
+      ...s,
+      ...parseXml(stepsResponse.data.content).map((x) => ({
+        ...x,
+        status: "pending" as "pending",
+      })),
+    ]);
 
     // setLlmMessages(
     //   [...prompts, prompt].map((content) => ({
@@ -302,8 +306,7 @@ export function BuilderPage() {
               {activeTab === "code" ? (
                 <CodeEditor file={selectedFile} />
               ) : (
-                // <PreviewFrame webContainer={webcontainer} files={files} />
-                <div>Preview</div>
+                <PreviewFrame webContainer={webcontainer} files={files} />
               )}
             </div>
           </div>

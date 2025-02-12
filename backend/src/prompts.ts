@@ -276,6 +276,14 @@ Here are some examples of correct usage of artifacts:
       You can now view the bouncing ball animation in the preview. The ball will start falling from the top of the screen and bounce realistically when it hits the bottom.
     </assistant_response>
   </example>
+  <example>
+  Do not add ' ' ' file extenstion and boltAction. Just give the bold action tags. Dont add ''' in your responses to indicate any form on file type
+  <boltAction type="file" filePath="src/index.css">
+    @tailwind base;
+    @tailwind components;
+    @tailwind utilities;
+    </boltAction>
+  </example>
 </examples>
 `;
 

@@ -10,8 +10,8 @@ import cors from "cors";
 
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-// const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: getSystemPrompt() });
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b", systemInstruction: "" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: getSystemPrompt() });
+// const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b", systemInstruction: "" });
 
 
 const app = express();
@@ -38,7 +38,7 @@ app.post("/template", async (req, res) => {
     
         if(answer == "node"){
             res.json({
-                prompts: [nodeBasePrompt]
+                prompt_ui: [nodeBasePrompt]
             })
             return;
         }
@@ -63,21 +63,17 @@ app.post("/chat", async (req, res) => {
 
     const messages = req.body.messages;
 
-    console.log(messages)
-
     const result = await model.generateContent({
         contents: [
             messages
         ],
-        generationConfig: {
-            maxOutputTokens: 2000,
-            temperature: 1,
-          }
     }
     );
+    const generatedText = result.response.text()
+    console.log(generatedText)
 
     res.json({
-        content: result
+        content: generatedText
     })
 })
 app.listen(3000, () => {
