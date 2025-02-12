@@ -31,7 +31,7 @@ export function BuilderPage() {
 
   const [userPrompt, setPrompt] = useState("");
   const [llmMessages, setLlmMessages] = useState<
-    { role: "user" | "assistant"; content: string }[]
+    { role: "user" | "assistant"; parts: {text: string} }[]
   >([]);
   const [loading, setLoading] = useState(false);
   const [templateSet, setTemplateSet] = useState(false);
@@ -171,6 +171,7 @@ export function BuilderPage() {
 
   async function init() {
 
+    // Get the template and meta prompts
     const response = await axios.post(`${BACKEND_URL}/template`, {
       prompt: prompt.trim(),
     });
@@ -178,6 +179,7 @@ export function BuilderPage() {
     setTemplateSet(true);
     const { prompts, prompt_ui } = response.data;
 
+    // Parse the init template
     setSteps(
       parseXml(prompt_ui[0])
     );
@@ -185,6 +187,8 @@ export function BuilderPage() {
     setLoading(false);
 
     setLoading(true);
+    
+    // Using the meta prompts and user prompt, query the llm
     const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
       messages: [...prompts, prompt].map((content) => ({
         role: "user",
@@ -194,8 +198,7 @@ export function BuilderPage() {
       })),
     });
 
-    console.log(stepsResponse.data.content);
-
+    // Parse the generated code from the LLM
     setSteps((s) => [
       ...s,
       ...parseXml(stepsResponse.data.content).map((x) => ({
@@ -204,22 +207,73 @@ export function BuilderPage() {
       })),
     ]);
 
-    // setLlmMessages(
-    //   [...prompts, prompt].map((content) => ({
-    //     role: "user",
-    //     content,
-    //   }))
-    // );
+    // Store the history of prompts
+    setLlmMessages(
+      [...prompts, prompt].map((content) => ({
+        role: "user",
+        parts: {
+            text: content
+        },
+      }))
+    );
+    
+    // Add the assistant answers as well
+    setLlmMessages((x) => [
+      ...x,
+      { role: "assistant", parts: {text: stepsResponse.data.content }},
+    ]);
 
-    // setLlmMessages((x) => [
-    //   ...x,
-    //   { role: "assistant", content: stepsResponse.data.response },
-    // ]);
+    setLoading(false);
+
   }
 
   useEffect(() => {
     init();
   }, []);
+
+
+  const onGenerateClick = async () => {
+    const newMessage = {
+        role: "user" as "user",
+        parts: {
+            text: userPrompt
+        },
+      };
+
+      setLoading(true);
+      const stepsResponse = await axios.post(
+        `${BACKEND_URL}/chat`,
+        {
+          messages: [...llmMessages, newMessage],
+        }
+      );
+      
+      setLoading(false);
+
+      setLlmMessages((x) => [...x, newMessage]);
+      setLlmMessages((x) => [
+        ...x,
+        {
+          role: "assistant",
+          parts: {
+            text: stepsResponse.data.content
+          },
+        },
+      ]);
+
+      setSteps((s) => [
+        ...s,
+        ...parseXml(stepsResponse.data.content).map(
+          (x) => ({
+            ...x,
+            status: "pending" as "pending",
+          })
+        ),
+      ]);
+
+      setPrompt("");
+  }
+
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
@@ -232,7 +286,7 @@ export function BuilderPage() {
         <div className="h-full grid grid-cols-4 gap-6 p-6">
           <div className="col-span-1 space-y-6 overflow-auto">
             <div>
-              <div className="max-h-[75vh] overflow-scroll">
+              <div className="max-h-[50vh] overflow-scroll">
                 <StepsList
                   steps={steps}
                   currentStep={currentStep}
@@ -244,7 +298,7 @@ export function BuilderPage() {
                   <br />
                   {(loading || !templateSet) && <Loader />}
                   {!(loading || !templateSet) && (
-                    <div className="flex">
+                    <div className="flex text-white">
                       <textarea
                         value={userPrompt}
                         onChange={(e) => {
@@ -253,41 +307,8 @@ export function BuilderPage() {
                         className="p-2 w-full"
                       ></textarea>
                       <button
-                        onClick={async () => {
-                          const newMessage = {
-                            role: "user" as "user",
-                            content: userPrompt,
-                          };
-
-                          setLoading(true);
-                          const stepsResponse = await axios.post(
-                            `${BACKEND_URL}/chat`,
-                            {
-                              messages: [...llmMessages, newMessage],
-                            }
-                          );
-                          setLoading(false);
-
-                          setLlmMessages((x) => [...x, newMessage]);
-                          setLlmMessages((x) => [
-                            ...x,
-                            {
-                              role: "assistant",
-                              content: stepsResponse.data.response,
-                            },
-                          ]);
-
-                          setSteps((s) => [
-                            ...s,
-                            ...parseXml(stepsResponse.data.response).map(
-                              (x) => ({
-                                ...x,
-                                status: "pending" as "pending",
-                              })
-                            ),
-                          ]);
-                        }}
-                        className="bg-purple-400 px-4"
+                        onClick={onGenerateClick}
+                        className="bg-purple-400 px-4 rounded-xl"
                       >
                         Send
                       </button>

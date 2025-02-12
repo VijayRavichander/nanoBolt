@@ -277,7 +277,7 @@ Here are some examples of correct usage of artifacts:
     </assistant_response>
   </example>
   <example>
-  Do not add ' ' ' file extenstion and boltAction. Just give the bold action tags. Dont add ''' in your responses to indicate any form on file type
+  Never add these ''' file extenstion to a boltAction. Just give the bold action tags. Dont add ''' in your responses to indicate any form on file type
   <boltAction type="file" filePath="src/index.css">
     @tailwind base;
     @tailwind components;

@@ -11,7 +11,7 @@ import cors from "cors";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: getSystemPrompt() });
-// const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b", systemInstruction: "" });
+const mini_model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b", systemInstruction: "" });
 
 
 const app = express();
@@ -28,7 +28,7 @@ app.post("/template", async (req, res) => {
         const metaPrompt = `Given the below prompt, return if the project has to be node or react. 
         Just return 'node' if it is node and 'react' if it is react. Don't return anything extra before or after. The prompt: ${prompt}`
     
-        const result = await model.generateContent(metaPrompt);
+        const result = await mini_model.generateContent(metaPrompt);
     
         console.log(result);
     
@@ -64,9 +64,7 @@ app.post("/chat", async (req, res) => {
     const messages = req.body.messages;
 
     const result = await model.generateContent({
-        contents: [
-            messages
-        ],
+        contents: messages,
     }
     );
     const generatedText = result.response.text()

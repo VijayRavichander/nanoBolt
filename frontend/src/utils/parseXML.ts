@@ -29,6 +29,7 @@ import { Step, StepType } from "../types"
  * The input can have strings in the middle they need to be ignored
  */
 
+
 export function parseXml(response: string): Step[] {
     // Extract the XML content between <boltArtifact> tags
     const xmlMatch = response.match(/<boltArtifact[^>]*>([\s\S]*?)<\/boltArtifact>/);
@@ -60,6 +61,11 @@ export function parseXml(response: string): Step[] {
     let match;
     while ((match = actionRegex.exec(xmlContent)) !== null) {
       const [, type, filePath, content] = match;
+
+      // Clean the content by removing Markdown code fence indicators
+      const cleanContent = content.replace(/```[a-zA-Z]*\n/g, '')  // Remove opening fence with language
+                                 .replace(/```\n?/g, '')           // Remove closing fence
+                                 .trim();
   
       if (type === 'file') {
         // File creation step
@@ -69,7 +75,7 @@ export function parseXml(response: string): Step[] {
           description: '',
           type: StepType.CreateFile,
           status: 'pending',
-          code: content.trim(),
+          code: cleanContent,
           path: filePath
         });
       } else if (type === 'shell') {
@@ -80,7 +86,7 @@ export function parseXml(response: string): Step[] {
           description: '',
           type: StepType.RunScript,
           status: 'pending',
-          code: content.trim()
+          code: cleanContent
         });
       }
     }
